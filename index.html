@@ -85,6 +85,50 @@
         background: var(--success-bg);
         color: green;
       }
+      @media (max-width: 768px) {
+        body {
+          padding: 10px;
+        }
+
+        .container {
+          width: 100%;
+          padding: 0 5%;
+        }
+
+        .input-container {
+          gap: 15px;
+        }
+
+        .logo {
+          width: 80%;
+          max-width: 200px;
+        }
+
+        h2 {
+          font-size: 1.2rem;
+        }
+
+        textarea {
+          height: 200px;
+          font-size: 0.9rem;
+        }
+
+        button {
+          font-size: 0.9rem;
+        }
+
+        pre {
+          font-size: 0.9rem;
+        }
+      }
+
+      /* Larger screens */
+      @media (min-width: 1024px) {
+        .input-container {
+          flex-direction: row;
+          gap: 10px;
+        }
+      }
     </style>
   </head>
   <body>
