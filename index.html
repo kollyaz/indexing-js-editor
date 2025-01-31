@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JavaScript Editor</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/material.min.css"
+    />
+    <style>
+      :root {
+        --bg: #f6f6f6;
+        --text: #000000;
+        --button-bg: #98f120;
+        --editor-bg: #ffffff;
+        --editor-text: #000000;
+        --error-bg: #ffcccc;
+        --success-bg: #ccffcc;
+      }
+      * {
+        box-sizing: border-box;
+        font-family: monospace;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .container {
+        width: 90%;
+        max-width: 800px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .logo {
+        width: 400px;
+      }
+      .input-container {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+        align-items: center;
+      }
+
+      input {
+        padding: 8px;
+        flex: 1;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+      button {
+        padding: 10px;
+        border: none;
+        cursor: pointer;
+        background: var(--button-bg);
+        color: var(--text);
+        font-weight: bold;
+        border-radius: 8px;
+      }
+      textarea {
+        border-radius: 8px;
+      }
+      pre {
+        background: var(--editor-bg);
+        padding: 10px;
+        overflow: auto;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+      .error {
+        background: var(--error-bg);
+        color: red;
+      }
+      .success {
+        background: var(--success-bg);
+        color: green;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <img
+        class="logo"
+        src="/664f7e7ad9085ebca04bcb0a_indexing-company-logo-full-black.svg"
+        alt="indexing-logo"
+      />
+      <h2>JavaScript Editor</h2>
+      <div class="input-container">
+        <input type="text" id="get-url" placeholder="Enter GET URL..." />
+        <button onclick="loadJS()">Load JS Code</button>
+      </div>
+
+      <div class="input-container">
+        <input type="text" id="post-url" placeholder="Enter POST URL..." />
+        <button onclick="sendJS()">Send JS Code</button>
+      </div>
+
+      <textarea title="editor" id="editor">
+// Write JavaScript here...</textarea
+      >
+      <button onclick="runJS()">Run Code</button>
+
+      <h3>Console Output</h3>
+      <pre id="output">Output will appear here...</pre>
+      <h3>Response</h3>
+      <pre id="response">Response will appear here...</pre>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+    <script>
+      let editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+        lineNumbers: true,
+        mode: "javascript",
+        theme: "material",
+      });
+
+      function updateResponseBox(response, isError = false) {
+        const responseBox = document.getElementById("response");
+        responseBox.innerText = JSON.stringify(response, null, 2);
+        responseBox.className = isError ? "error" : "success";
+      }
+
+      function loadJS() {
+        const url = document.getElementById("get-url").value;
+        if (!url) return alert("Enter a GET URL.");
+
+        fetch(url)
+          .then((res) =>
+            res.text().then((text) => ({
+              status: res.ok ? "success" : "error",
+              statusCode: res.status,
+              message: res.ok
+                ? "Code loaded successfully"
+                : "Failed to load code",
+              rawResponse: text,
+            }))
+          )
+          .then((data) => {
+            const { rawResponse, ...responseWithoutRaw } = data;
+
+            if (data.status === "success") {
+              editor.setValue(data.rawResponse);
+            }
+            updateResponseBox(responseWithoutRaw, data.status === "error");
+          })
+          .catch((err) => {
+            updateResponseBox(
+              {
+                status: "error",
+                statusCode: "Network Error",
+                message: err.message,
+              },
+              true
+            );
+          });
+      }
+
+      function sendJS() {
+        const url = document.getElementById("post-url").value;
+        if (!url) return alert("Enter a POST URL.");
+
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: editor.getValue() }),
+        })
+          .then((res) =>
+            res.text().then((text) => {
+              try {
+                const jsonResponse = JSON.parse(text);
+                return {
+                  status: res.ok ? "success" : "error",
+                  statusCode: res.status,
+                  message: res.ok
+                    ? "Code sent successfully"
+                    : "Failed to send code",
+                  data: jsonResponse,
+                };
+              } catch {
+                return {
+                  status: "error",
+                  statusCode: res.status,
+                  message: "Failed to send code",
+                  // rawResponse: text,
+                };
+              }
+            })
+          )
+          .then((data) => {
+            updateResponseBox(data, data.status === "error");
+          })
+          .catch((err) => {
+            updateResponseBox(
+              {
+                status: "error",
+                statusCode: "Network Error",
+                message: err.message,
+              },
+              true
+            );
+          });
+      }
+
+      function runJS() {
+        const code = editor.getValue();
+        try {
+          const consoleLog = [];
+          const originalConsoleLog = console.log;
+
+          console.log = (...args) => {
+            consoleLog.push(args.join(" "));
+            originalConsoleLog.apply(console, args);
+          };
+
+          new Function(code)();
+          document.getElementById("output").innerText = consoleLog.length
+            ? consoleLog.join("\n")
+            : "Code executed successfully.";
+          document.getElementById("output").className = "success";
+          console.log = originalConsoleLog;
+        } catch (error) {
+          document.getElementById(
+            "output"
+          ).innerText = `Error: ${error.message}`;
+          document.getElementById("output").className = "error";
+        }
+      }
+    </script>
+  </body>
+</html>
